@@ -23,7 +23,7 @@ const BulkSummary = ({ route, navigation }) => {
     const [discountApply, setDiscountApply] = useState(route.params.discount);
     const [new_prod_list, setNewProdList] = useState([]);
     const [total_price, setTotalPrice] = useState(0);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);      
     const [discountInfo, setDiscountInfo] = useState(null);
     const [isFireworkShow, setIsFireworkShow] = useState(true);
     const [nextAvailableDiscount, setNextAvailableDiscount] = useState(route?.params ? route?.params?.nextAvailableDiscount : null);
@@ -244,7 +244,7 @@ const BulkSummary = ({ route, navigation }) => {
 
 
         });
-
+        
         setIsLoading(true);
         const Obj = {
             customerId: await getCustomerId(),

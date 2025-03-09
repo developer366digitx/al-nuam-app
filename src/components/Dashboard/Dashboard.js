@@ -27,12 +27,18 @@ import ChatSupport from "../Support/ChatSupport";
 import Tooltip from 'react-native-walkthrough-tooltip';
 import { CopilotProvider } from "react-native-copilot";
 import { Alert, BackHandler } from "react-native";
-
+import { NavigationContainer } from "@react-navigation/native";
 const Dashboard = ({ navigation }) => {
 
     const [isBulkOrderTooltipVisible, setBulkOrderTooltipVisible] = useState(true);
 
-    const Tab = createBottomTabNavigator();
+    const Tab = createBottomTabNavigator(
+    //    {
+    //      screens:{
+            
+    //     }
+    // }
+    );
     const Stack = createNativeStackNavigator();
 
     useEffect(() => {
@@ -56,6 +62,8 @@ const Dashboard = ({ navigation }) => {
 
     // , tabBarStyle: {height: 60} in screen options
     return (
+        
+        // <NavigationContainer>
         <Tab.Navigator screenOptions={{ unmountOnBlur: true, headerShown: false }} tabBarOptions={{
             tabStyle: {
                 paddingTop: 10,
@@ -150,7 +158,6 @@ const Dashboard = ({ navigation }) => {
                 tabBarLabelStyle: { fontFamily: "Inter-Regular", fontSize: 12 },
                 tabBarIcon: ({ size, focused, color }) => {
                     let iconName;
-
                     return (
                         <View>
                             {
@@ -181,6 +188,12 @@ const Dashboard = ({ navigation }) => {
             < Tab.Screen name="CustomerSupport" component={CustomerSupport} options={{ tabBarVisible: false, tabBarButton: () => null }} />
             < Tab.Screen name="ChatSupport" component={ChatSupport} options={{ tabBarVisible: false, tabBarButton: () => null }} />
         </Tab.Navigator >
+        // </NavigationContainer>
+   
+   
+   
+               
+           
     )
 }
 

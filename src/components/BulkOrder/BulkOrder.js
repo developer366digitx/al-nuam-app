@@ -2,7 +2,7 @@ import { Input, ScrollView, Text, View, useToast, Menu, Pressable, Checkbox, Act
 import React, { forwardRef, useEffect, useRef, useState } from "react";
 import { Alert, Dimensions, StyleSheet, Image, TouchableWithoutFeedback, Keyboard, StatusBar, ActionSheetIOS, Platform } from "react-native";
 import Back from "../../../assets/back.svg";
-import { BASE64, GET_CART, GET_DISCOUNTS, GET_DROPDOWN_DATA, GET_PRODUCT_BY_PRODUCT_ID, GET_PRODUCT_LIST, IMAGE_PATH } from "../../utils/constant";
+import { ADD_TO_CART, BASE64, GET_CART, GET_DISCOUNTS, GET_DROPDOWN_DATA, GET_PRODUCT_BY_PRODUCT_ID, GET_PRODUCT_LIST, IMAGE_PATH } from "../../utils/constant";
 import { HTTP_GET, HTTP_POST } from "../../utils/http-service";
 import Search from "../../../assets/icons/search.svg";
 import FilterIcon from "../../../assets/arrow-filter.svg";
@@ -418,10 +418,7 @@ const BulkOrder = () => {
             }
         });
         setSubCategoryList([...tmp_list]);
-        // setTimeout(() => {
         setRadioSubCategory(tmp_list[0]);
-
-        // }, 3000);
         calculateCartonSize();
     }
 
@@ -493,12 +490,11 @@ const BulkOrder = () => {
             )
         );
 
-
         if (e != "" && +e > Math.floor(product.stock)) {
             toast.show({
                 description: `Only ${Math.floor(product.stock)} Dozen are available in stock.`
             });
-            return;
+            return; E
         }
 
         const foundIndex = modifiedProductList.findIndex((ele) => ele?.productId == product.productId);
@@ -612,32 +608,81 @@ const BulkOrder = () => {
         }
     }
 
-    const navigateToSummary = () => {
-        if (!validateCartonSize()) {
-            return;
-        }
+    const navigateToSummary = async () => {
 
-        if (!productList.every(ele => ele?.isProductValid)) {
-            setProductValidModal(true);
-            return;
-        } else {
-            setProductValidModal(false);
-        }
+        // Old code
+        //  if (!validateCartonSize()) {
+        //     return;
+        // }
 
-        navigation.navigate("Bulk_Summary", {
-            productList: modifiedProductList.map(ele => {
+        // if (!productList.every(ele => ele?.isProductValid)) {
+        //     setProductValidModal(true);
+        //     return;
+        // } else {
+        //     setProductValidModal(false);
+        // }
+
+        // navigation.navigate("Bulk_Summary", {
+        //     productList: modifiedProductList.map(ele => {
+        //         ele.cartonSize = ele.cartonSize / 12;
+        //         if (ele.unit != 0) {
+        //             return ele;
+        //         }
+        //         return ele;
+        //     }),
+        //     subCategoryList: allSubCategories,
+        //     discount: discountApply,
+        //     nextAvailableDiscount
+        // })
+
+        // Add to  Cart
+        try {
+            const prod_list = [];
+            modifiedProductList.map(ele => {
                 ele.cartonSize = ele.cartonSize / 12;
                 if (ele.unit != 0) {
                     return ele;
                 }
                 return ele;
-            }),
-            subCategoryList: allSubCategories,
-            discount: discountApply,
-            nextAvailableDiscount
-        })
-    }
+            }).forEach(product => {
+                prod_list.push({
+                    productId: product.productId,
+                    quantity: (+product.unit)
+                })
+            });
+            setIsLoading(true);
+            const Obj = {
+                customerId: await getCustomerId(),
+                subcategories: [{ "products": prod_list }],
+                totalBillAmount: totalPrice
+            }
+            const URL = `${ADD_TO_CART}`;
+            const data = await HTTP_POST(URL, Obj);
 
+            if (data != null && data["status"] !== undefined) {
+                if (data["status"] === "invalid") {
+                    toast.show({ description: "Uh-oh! 🚫 Add to cart failed. Please try again. 🛒" });
+                } else if (data["status"] === "error") {
+                    toast.show({ description: "Something went wrong!!" });
+                }
+                setIsLoading(false);
+            } else {
+                setIsLoading(false);
+                toast.show({
+                    description: "🎉 Awesome! Your products have been added to the cart successfully. 🛒",
+                    duration: 3000
+                });
+
+                navigation.navigate("Cart");
+            }
+
+
+        } catch (error) {
+            console.log(error, 'error');
+            toast.show({ description: "Uh-oh! 🚫 Add to cart failed. Please try again. 🛒" });
+        }
+
+    }
     const back = () => {
         navigation.navigate("Dashboard", { screen: "Home" });
     }
@@ -760,16 +805,16 @@ const BulkOrder = () => {
                     borderWidth: 1,
                     borderRadius: 6,
                     borderColor: "#B6974E",
-                    flex: 1,          // This will make it take the remaining space
+                    width: "100%", // Take full width of parent container
                     paddingVertical: rMS(8),
                     paddingHorizontal: rMS(5),
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    alignItems: 'center'
                 }}
             >
                 <Text
                     {...copilot}
-                    // adjustsFontSizeToFit={true}
-                    numberOfLines={1}
+                    numberOfLines={2}
                     style={{
                         fontFamily: "Inter-Regular",
                         fontSize: rMS(12),
@@ -838,7 +883,6 @@ const BulkOrder = () => {
     const renderProductItem = ({ item, index }) => {
         // const IMAGE_PATH = "https://example.com/images/";
         // const DEFAULT_PRODUCT_IMAGE = "https://example.com/default-image.png";
-
         return (
             <Pressable key={`${item?.productId}_${index}`} onPress={() => openProductDetailModal(item?.productId)}>
                 <View>
@@ -1054,15 +1098,14 @@ const BulkOrder = () => {
                         </View>
                     </ScrollView>
 
-                    <View style={[styles.filterWrapper, { flexDirection: 'row' }]}>
-                        <View style={{ flex: 7 }}> 
+                    <View style={styles.filterWrapper}>
+                        <View style={{ flex: 7, marginRight: rMS(10) }}>
                             <View style={styles.searchWrapper}>
                                 <Input size="xs" h="8" style={styles.searchInput} onChangeText={(e) => onSearch(e)} variant="unstyled" type="text" placeholder="Search anything..." InputLeftElement={<Search width={14} height={14} />} />
                             </View>
                         </View>
 
                         <View style={{ flex: 3 }}>
-
                             <CopilotStep text="Change subcategories from here" order={2} name="index2">
                                 <ChooseSubCategory />
                             </CopilotStep>
@@ -1617,7 +1660,7 @@ const styles = StyleSheet.create({
         borderColor: "#B6974F",
         borderRadius: 63,
         paddingHorizontal: 12,
-        width: "73%"
+        width: "100%"
     },
     searchInput: {
         fontSize: 13,
@@ -1628,11 +1671,11 @@ const styles = StyleSheet.create({
     filterWrapper: {
         display: "flex",
         flexDirection: "row",
-        justifyContent: "space-between",
+        // justifyContent: "space-between",
         width: "100%",
         alignItems: "center",
         marginTop: 15,
-        gap: rMS(10)
+        // gap: rMS(10)
     },
     filterButtons: {
         display: "flex",
