@@ -651,7 +651,7 @@ const BulkOrder = () => {
                     quantity: (+product.unit)
                 })
             });
-            setIsLoading(true);
+        
             const Obj = {
                 customerId: await getCustomerId(),
                 subcategories: [{ "products": prod_list }],
@@ -681,6 +681,7 @@ const BulkOrder = () => {
         } catch (error) {
             console.log(error, 'error');
             toast.show({ description: "Uh-oh! 🚫 Add to cart failed. Please try again. 🛒" });
+            setIsLoading(false)
         }
 
     }
@@ -1555,10 +1556,11 @@ const BulkOrder = () => {
                             </CopilotView>
                         </CopilotStep>
 
-                        <CopilotStep text="Click 'View Summary' to preview your order." order={7} name="index7">
+                        <CopilotStep text="Click 'Add to Cart' to preview your order." order={7} name="index7">
                             <CopilotView>
                                 <View style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                                    <Button style={styles.cartBtn} onPress={() => navigateToSummary()}>View Summary</Button>
+                                    <Button style={styles.cartBtn} onPress={() => navigateToSummary()}
+                                       disabled={isLoading} >Add to Cart</Button>
                                 </View>
                             </CopilotView>
                         </CopilotStep>
