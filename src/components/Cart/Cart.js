@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Dimensions, Pressable, StyleSheet, Image, Alert, KeyboardAvoidingView, Platform, SafeAreaView } from "react-native";
 import Back from "../../../assets/back.svg";
 import { rMS } from "../../utils/responsive";
-import { ADD_TO_CART, CAPTURE_PAYMENT, GENERATE_ORDER_ID, GET_ADDREES_LIST, GET_CART, GET_COUPONS, GET_DISCOUNTS, GET_GST, GET_LOGGEDIN_USER_DETAILS } from "../../utils/constant";
+import { ADD_TO_CART, CAPTURE_PAYMENT, GENERATE_ORDER_ID, GET_ADDREES_LIST, GET_CART, GET_COUPONS, GET_DISCOUNTS, GET_GST, GET_LOGGEDIN_USER_DETAILS, GET_PRODUCT_BY_PRODUCT_ID, IMAGE_PATH } from "../../utils/constant";
 import { getCustomerId, getUserInfo, setCartDataInGlobal } from "../../utils/helper";
 import { HTTP_GET, HTTP_POST } from "../../utils/http-service";
 import Star from "../../../assets/star.svg";
@@ -19,6 +19,9 @@ import CouponSvg from "../../../assets/coupon.svg";
 import { BadgePercent, Castle, DiamondPercent, ReceiptText, ShoppingBag, ShoppingCart, TicketPercent } from "lucide-react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import ArrowDown from "../../../assets/arrow-down - cart.svg";
+import NoImage from "../../../assets/images/No-Image-Placeholder.png";
+import { SliderBox } from "react-native-image-slider-box";
+import FastImage from "react-native-fast-image";
 
 const win = Dimensions.get('window');
 
@@ -48,9 +51,11 @@ const Cart = ({ route, navigation }) => {
         itemsToAdd: 0,
         itemsToRemove: 0
     });
-
+    const [productInfoLoading, setProductInfoLoading] = useState(false);
+    const [productDetailModal, setProductDetailModal] = useState(false);
+    const [productDetailInfo, setProductDetailInfo] = useState(null);
     const toast = useToast();
-
+    const NO_IMAGE = Image.resolveAssetSource(NoImage).uri;
     const refRBSheet = useRef();
     const DEFAULT_PRODUCT_IMAGE = Image.resolveAssetSource(DefaultImage).uri;
 
@@ -390,7 +395,7 @@ const Cart = ({ route, navigation }) => {
                 toast.show({ description: "Something went wrong!!" }, 3000);
             }
         } else {
-            if(data != null){
+            if (data != null) {
                 setDiscountList(data);
             } else {
                 setDiscountList([]);
@@ -412,7 +417,7 @@ const Cart = ({ route, navigation }) => {
             if (total % (cartonSize / 12) == 0) {
                 subcategory["isValidCartonSize"] = true;
                 subcategory["countMismatch"] = false;
-                
+
                 // return true;
             } else {
                 let itemsToAdd = (cartonSize / 12) - Math.trunc(total % (cartonSize / 12));
@@ -452,7 +457,7 @@ const Cart = ({ route, navigation }) => {
         let maxNumber = 0;
         let discountInfo = {};
         let nextAvailableDiscount = null;
-        
+
         for (let i = 0; i < discountList.length; i++) {
             const discount = discountList[i];
             // Check if the discount is applicable based on its type and conditions
@@ -650,17 +655,17 @@ const Cart = ({ route, navigation }) => {
             });
         });
         const discountData = await findDiscountApply(+parseFloat(totalAmount).toFixed(2));
-        
+
         if (discountData) {
-            
+
             amountAfterDiscount = discountData != null ? totalAmount - discountData?.discountAmount : 0
             setCartData({ ...cartData, billAmountDiscountCode: discountData?.code, totalBillDiscountAmount: discountData?.discountAmount, totalBillAmount: totalAmount, totalBillAmountAfterDiscount: amountAfterDiscount, discountAllInfo: discountData?.discountData });
         } else
         //  if (appliedCouponData) {
-            //     setCartData({ ...cartData, billAmountDiscountCode: null, totalBillDiscountAmount: 0, totalBillAmount: totalAmount, totalBillAmountAfterDiscount: amountAfterDiscount - appliedCouponData?.couponAmount });
-            // }
-            //  else
-            {
+        //     setCartData({ ...cartData, billAmountDiscountCode: null, totalBillDiscountAmount: 0, totalBillAmount: totalAmount, totalBillAmountAfterDiscount: amountAfterDiscount - appliedCouponData?.couponAmount });
+        // }
+        //  else
+        {
             setCartData({ ...cartData, billAmountDiscountCode: null, totalBillDiscountAmount: 0, totalBillAmount: totalAmount, totalBillAmountAfterDiscount: totalAmount, discountAllInfo: discountData?.discountData });
         }
 
@@ -743,11 +748,49 @@ const Cart = ({ route, navigation }) => {
         calculateFinalAmount();
     }
 
-    const expandItem = (item) => {
-        item.isExpand = !item.isExpand;
+    const expandItem = async (item) => {
+        // item.isExpand = !item.isExpand;
         setProductList(prevItem =>
             prevItem.map(ele => ele?.subCategoryId == item?.subCategoryId ? item : ele)
         )
+        // console.log('Item Expanded',item);
+    }
+
+    const openProductDetail = async (product) => {
+        // console.log(product,'product'); 
+        await getProductDetail(product.productId);
+    }
+
+    async function getProductDetail(productId) {
+        console.log('enter');
+
+        setProductDetailModal(true);
+        setProductInfoLoading(true);
+        try {
+            const URL = `${GET_PRODUCT_BY_PRODUCT_ID}/${productId}`;
+            console.log('url', URL);
+            const data = await HTTP_GET(URL);
+            console.log(data, 'data');
+
+            if (data != null && data["status"] !== undefined) {
+                if (data["status"] === "invalid") {
+                    toast.show({ description: "Oops! Something went wrong while fetching your details." });
+                } else if (data["status"] === "error") {
+                    toast.show({ description: "Oops! Something went wrong while fetching your details. " });
+                }
+                setProductInfoLoading(false);
+            } else {
+                setProductInfoLoading(false);
+                console.log('enter in else');
+                if (data != null) {
+                    setProductDetailInfo(data);
+                }
+            }
+        } catch (error) {
+            console.log(error, 'error');
+
+        }
+
     }
 
     return (
@@ -800,7 +843,7 @@ const Cart = ({ route, navigation }) => {
                                                         return (
                                                             <Pressable key={item?.subCategoryId} onPress={() => expandItem(item)}>
                                                                 <View style={styles.subCategoryWrapper}>
-                                                                    <View style={[styles.labelBgColor, {paddingVertical: "3%"}]}>
+                                                                    <View style={[styles.labelBgColor, { paddingVertical: "3%" }]}>
                                                                         <View style={{ flexDirection: "row", gap: rMS(10), alignItems: "center" }}>
                                                                             <View style={{ paddingHorizontal: rMS(5) }}>
                                                                                 <SubcatHeaderLogo />
@@ -810,14 +853,14 @@ const Cart = ({ route, navigation }) => {
                                                                                 {/* <Text style={styles.lbl}>1 Carton = {item?.cartonSize / 12} Dozen</Text> */}
                                                                             </View>
                                                                         </View>
-                                                                        <View style={{flexDirection: "row", alignItems: "center", paddingHorizontal: "2%", gap:5}}>
+                                                                        <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: "2%", gap: 5 }}>
                                                                             <Text style={styles.lbl}>1 Carton = {item?.cartonSize / 12} Dozen</Text>
                                                                             {
                                                                                 item.isExpand ?
-                                                                                <ArrowDown /> :
-                                                                                <View style={{transform: [{ rotate: '180deg'}]}}>
-                                                                                    <ArrowDown />
-                                                                                </View>
+                                                                                    <ArrowDown /> :
+                                                                                    <View style={{ transform: [{ rotate: '180deg' }] }}>
+                                                                                        <ArrowDown />
+                                                                                    </View>
 
                                                                             }
                                                                             {/* <Text textAlign="right" style={styles.lbl}>Your Carton Size: {item?.currentCartonSize}</Text> */}
@@ -829,47 +872,49 @@ const Cart = ({ route, navigation }) => {
                                                                         <View style={styles.productWrapper}>
                                                                             {item?.products.map((ele, index) => {
                                                                                 return (
-                                                                                    <View style={ele?.isProductValid ? styles.productValid : styles.productInvalid} key={[ele?.productId, "_", index].join()}>
-                                                                                        <View style={styles.productItemWrapper}>
-                                                                                            <View style={styles.productTitleWrapper}>
-                                                                                                <Text style={styles.productTitle} numberOfLines={1}>{ele?.productName}</Text>
-                                                                                                {/* <View style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 5 }}><Star /><Text   style={styles.productRating}>{ele?.rating}</Text></View> */}
-                                                                                            </View>
-
-                                                                                            <View style={styles.productPriceWrapper}>
-                                                                                                <View style={styles.qtyBtnWrapper}>
-                                                                                                    {/* <Text   style={styles.qtyInput}>{ele?.unit}</Text> */}
-                                                                                                    <Input value={ele?.unit} w="45%" h={hp("5%")} style={styles.qtyInput} onChangeText={(e) => onProductUnitChange(e, ele, item)} keyboardType="numeric" size="xs" />
-                                                                                                    <Text style={styles.unit}>Dozen</Text>
+                                                                                    <Pressable onPress={() => openProductDetail(ele)}>
+                                                                                        <View style={ele?.isProductValid ? styles.productValid : styles.productInvalid} key={[ele?.productId, "_", index].join()} >
+                                                                                            <View style={styles.productItemWrapper}>
+                                                                                                <View style={styles.productTitleWrapper}>
+                                                                                                    <Text style={styles.productTitle} numberOfLines={1}>{ele?.productName}</Text>
+                                                                                                    {/* <View style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 5 }}><Star /><Text   style={styles.productRating}>{ele?.rating}</Text></View> */}
                                                                                                 </View>
 
+                                                                                                <View style={styles.productPriceWrapper}>
+                                                                                                    <View style={styles.qtyBtnWrapper}>
+                                                                                                        {/* <Text   style={styles.qtyInput}>{ele?.unit}</Text> */}
+                                                                                                        <Input value={ele?.unit} w="45%" h={hp("5%")} style={styles.qtyInput} onChangeText={(e) => onProductUnitChange(e, ele, item)} keyboardType="numeric" size="xs" />
+                                                                                                        <Text style={styles.unit}>Dozen</Text>
+                                                                                                    </View>
+
+                                                                                                    {
+                                                                                                        ele?.isDiscountActive == "Y" ?
+                                                                                                            <Text style={[styles.productPrice, [styles.productPrice, ((ele?.discountedPrice * (ele?.unit * 12)).toFixed(2)).toString().length >= 10 ? { fontSize: rMS(11) } : { fontSize: Platform.OS === 'ios' ? rMS(9) : rMS(12) }]]}>₹ {(+parseFloat(ele?.discountedPrice).toFixed(2) * (ele?.unit * 12)).toFixed(2)}</Text> :
+                                                                                                            <Text style={[styles.productPrice, ((ele?.price * (ele?.unit * 12)).toFixed(2)).toString().length >= 10 ? { fontSize: rMS(11) } : { fontSize: Platform.OS === 'ios' ? rMS(9) : rMS(12) }]}>₹ {(+parseFloat(ele?.price).toFixed(2) * (ele?.unit * 12)).toFixed(2)}</Text>
+
+                                                                                                    }
+
+                                                                                                    <View>
+                                                                                                        <Pressable onPress={() => removeProduct(ele, item)}>
+                                                                                                            <RemoveProduct />
+                                                                                                        </Pressable>
+                                                                                                    </View>
+
+                                                                                                </View>
+
+                                                                                            </View>
+                                                                                            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                                                                                                 {
-                                                                                                    ele?.isDiscountActive == "Y" ?
-                                                                                                        <Text style={[styles.productPrice, [styles.productPrice, ((ele?.discountedPrice * (ele?.unit * 12)).toFixed(2)).toString().length >= 10 ? { fontSize: rMS(11) } : { fontSize: Platform.OS === 'ios' ? rMS(9) : rMS(12) }]]}>₹ {(+parseFloat(ele?.discountedPrice).toFixed(2) * (ele?.unit * 12)).toFixed(2)}</Text> :
-                                                                                                        <Text style={[styles.productPrice, ((ele?.price * (ele?.unit * 12)).toFixed(2)).toString().length >= 10 ? { fontSize: rMS(11) } : { fontSize: Platform.OS === 'ios' ? rMS(9) : rMS(12) }]}>₹ {(+parseFloat(ele?.price).toFixed(2) * (ele?.unit * 12)).toFixed(2)}</Text>
-
+                                                                                                    (ele?.minQuantityForOrder > 1) &&
+                                                                                                    <Text style={{ fontFamily: "Inter-Regular", fontSize: rMS(12), color: "#566573", paddingHorizontal: rMS(5) }}>Minimum Order Quantity: {ele?.minQuantityForOrder}</Text>
                                                                                                 }
-
-                                                                                                <View>
-                                                                                                    <Pressable onPress={() => removeProduct(ele, item)}>
-                                                                                                        <RemoveProduct />
-                                                                                                    </Pressable>
-                                                                                                </View>
-
+                                                                                                {
+                                                                                                    (+ele?.unit > ele?.stock) &&
+                                                                                                    <Text style={{ fontFamily: "Inter-Regular", fontSize: rMS(12), color: "red", fontWeight: "600", paddingHorizontal: rMS(5) }}>Available Stock: {ele?.stock}</Text>
+                                                                                                }
                                                                                             </View>
-
                                                                                         </View>
-                                                                                        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                                                                                            {
-                                                                                                (ele?.minQuantityForOrder > 1) &&
-                                                                                                <Text style={{ fontFamily: "Inter-Regular", fontSize: rMS(12), color: "#566573", paddingHorizontal: rMS(5) }}>Minimum Order Quantity: {ele?.minQuantityForOrder}</Text>
-                                                                                            }
-                                                                                            {
-                                                                                                (+ele?.unit > ele?.stock) &&
-                                                                                                <Text style={{ fontFamily: "Inter-Regular", fontSize: rMS(12), color: "red", fontWeight: "600", paddingHorizontal: rMS(5) }}>Available Stock: {ele?.stock}</Text>
-                                                                                            }
-                                                                                        </View>
-                                                                                    </View>
+                                                                                    </Pressable>
                                                                                 )
                                                                             })}
                                                                         </View>
@@ -1004,14 +1049,14 @@ const Cart = ({ route, navigation }) => {
 
                                                 <View style={styles.priceWrapper}>
 
-                                                <View style={styles.calc_item}>
+                                                    <View style={styles.calc_item}>
                                                         <View style={{ flexDirection: "row", alignItems: "center" }}>
                                                             <ShoppingCart color="#566573" size={16} />
                                                             <Text style={styles.tot_lbl}>Total Carton Size:</Text>
                                                         </View>
                                                         <Text style={styles.val}>{productList.reduce((count, acc) => {
-                                                                    return count + acc.currentCartonSize;
-                                                                }, 0)}</Text>
+                                                            return count + acc.currentCartonSize;
+                                                        }, 0)}</Text>
                                                     </View>
 
                                                     <View style={styles.calc_item}>
@@ -1026,7 +1071,7 @@ const Cart = ({ route, navigation }) => {
                                                         <View style={{ flexDirection: "row", alignItems: "center" }}>
                                                             <TicketPercent color="#566573" size={16} />
                                                             <Text style={styles.tot_lbl}>Discount  {
-                                                                cartData?.billAmountDiscountCode != null && <Text  >({cartData?.discountAllInfo?.discountCategory == "Percentage" ? cartData?.discountAllInfo?.maxDiscountAmount != null ? `${cartData?.discountAllInfo?.discountInPer}% upto ${cartData?.discountAllInfo?.maxDiscountAmount}` : `${cartData?.discountAllInfo?.discountInPer}%`  : `Flat ₹${cartData?.discountAllInfo?.flatDiscountAmount} Off`})</Text>
+                                                                cartData?.billAmountDiscountCode != null && <Text  >({cartData?.discountAllInfo?.discountCategory == "Percentage" ? cartData?.discountAllInfo?.maxDiscountAmount != null ? `${cartData?.discountAllInfo?.discountInPer}% upto ${cartData?.discountAllInfo?.maxDiscountAmount}` : `${cartData?.discountAllInfo?.discountInPer}%` : `Flat ₹${cartData?.discountAllInfo?.flatDiscountAmount} Off`})</Text>
                                                             }:</Text>
                                                         </View>
                                                         <Text style={styles.val}>- ₹ {parseFloat(cartData?.totalBillDiscountAmount).toFixed(2)}</Text>
@@ -1105,7 +1150,7 @@ const Cart = ({ route, navigation }) => {
                         <Modal.Content maxWidth="400px">
                             <Modal.CloseButton />
                             <Modal.Header>
-                                <Text style={[styles.modalHeader, {width: "90%"}]}>Warning: Carton Size and Product Quantity Mismatch
+                                <Text style={[styles.modalHeader, { width: "90%" }]}>Warning: Carton Size and Product Quantity Mismatch
 
                                 </Text></Modal.Header>
                             <Modal.Body>
@@ -1137,6 +1182,115 @@ const Cart = ({ route, navigation }) => {
                             </Modal.Body>
                         </Modal.Content>
                     </Modal>
+
+                    <Modal size={'full'} isOpen={productDetailModal} closeOnOverlayClick="true" onClose={() => setProductDetailModal(false)}>
+                        <Modal.Content maxH="full">
+                            <Modal.CloseButton />
+                            <Modal.Header>
+                                <Text adjustsFontSizeToFit={true} style={styles.modalHeader}><Text style={[styles.productTitle, { width: "60%" }]} numberOfLines={1}>Product Information</Text></Text>
+                            </Modal.Header>
+                            <Modal.Body>
+                                {
+                                    productInfoLoading ? <View style={{ flexDirection: "row", justifyContent: "center" }}>
+                                        <HStack space={2} alignItems="center">
+                                            <Text style={{ color: "black", fontSize: 16 }}>Getting Product Info</Text><Spinner color="#B6974E" size={"sm"} accessibilityLabel="Loading posts" />
+                                        </HStack>
+                                    </View> :
+
+                                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: rMS(10) }}>
+                                            <SafeAreaView>
+                                                <View>
+                                                    <View style={{ width: wp("100%"), height: hp("30%") }}>
+                                                        {
+                                                            (productDetailInfo != null && productDetailInfo?.images.length) ?
+                                                                <SliderBox images={productDetailInfo?.images.map(ele => `${IMAGE_PATH}${ele.documentPath}`)} ImageComponent={(props) => (
+                                                                    <FastImage
+                                                                        {...props}
+
+                                                                        resizeMode={FastImage.resizeMode.contain}
+                                                                    />
+                                                                )} dotColor="#B6974E" inactieDotColor="black"
+                                                                    ImageComponentStyle={{ objectFit: "contain" }} imageLoadingColor="#B6974E"
+                                                                /> :
+                                                                <Image style={{ width: "100%", height: "100%", objectFit: "contain" }} resizeMode="contain" source={{
+                                                                    uri: NO_IMAGE
+                                                                }} />
+                                                        }
+                                                        {/* <Image style={{ width: "100%", height: "100%", objectFit: "contain" }} resizeMode="contain" source={{
+                                                                uri: `${IMAGE_PATH}${productDetailInfo?.images[0].documentPath}`
+                                                            }} /> */}
+
+
+                                                    </View>
+
+                                                    {
+                                                        productDetailInfo != null &&
+                                                        <View style={styles.productInfoWrapper}>
+                                                            <ScrollView horizontal={false} showsVerticalScrollIndicator={false}>
+                                                                <View style={{ flexDirection: "column", gap: 20 }}>
+                                                                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                                                                        <Text style={[styles.productTitle, { width: "60%" }]} numberOfLines={2}>{productDetailInfo?.productName}</Text>
+                                                                        <View style={{ flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
+                                                                            <Text adjustsFontSizeToFit={true} style={{ color: "#B6974E", fontFamily: "Inter-Regular" }}>Price</Text>
+                                                                            <Text adjustsFontSizeToFit={true} style={styles.productTitle}>₹ {productDetailInfo?.isDiscountActive == "Y" ? parseFloat(productDetailInfo?.discountedPrice).toFixed(2) : parseFloat(productDetailInfo?.price).toFixed(2)}</Text>
+                                                                        </View>
+                                                                    </View>
+
+                                                                    <View style={{ flexDirection: "row", gap: 10 }}>
+                                                                        <Star />
+                                                                        <Text adjustsFontSizeToFit={true} style={styles.ratingLbl}>{productDetailInfo?.rating}</Text>
+                                                                    </View>
+
+                                                                    {
+                                                                        productDetailInfo?.description &&
+                                                                        <View>
+                                                                            <Text adjustsFontSizeToFit={true} style={styles.descriptionLbl}>{productDetailInfo?.description}</Text>
+                                                                        </View>
+                                                                    }
+
+                                                                    <View>
+                                                                        <Text adjustsFontSizeToFit={true} style={styles.productTitle}>Product Detail</Text>
+
+                                                                        <View style={{ flexDirection: "column", gap: 10, marginTop: rMS(10) }}>
+
+                                                                            {
+                                                                                productDetailInfo?.categoryName &&
+                                                                                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                                                                                    <Text adjustsFontSizeToFit={true} style={styles.lbl}>Category</Text>
+                                                                                    <Text adjustsFontSizeToFit={true} style={styles.vallbl}>{productDetailInfo?.categoryName}</Text>
+                                                                                </View>
+                                                                            }
+
+                                                                            {
+                                                                                productDetailInfo?.subCategoryName &&
+                                                                                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                                                                                    <Text adjustsFontSizeToFit={true} style={styles.lbl}>Sub Category</Text>
+                                                                                    <Text adjustsFontSizeToFit={true} style={[styles.vallbl]} numberOfLines={2}>{productDetailInfo?.subCategoryName}</Text>
+                                                                                </View>
+                                                                            }
+
+                                                                            {
+                                                                                // productDetailInfo?.stockQuantity &&
+                                                                                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                                                                                    <Text adjustsFontSizeToFit={true} style={styles.lbl}>Stock</Text>
+                                                                                    <Text adjustsFontSizeToFit={true} style={styles.vallbl}>{productDetailInfo?.stockQuantity} Piece</Text>
+                                                                                </View>
+                                                                            }
+                                                                        </View>
+
+                                                                    </View>
+                                                                </View>
+                                                            </ScrollView>
+                                                        </View>
+                                                    }
+                                                </View>
+                                            </SafeAreaView>
+                                        </View>
+                                }
+                            </Modal.Body>
+                        </Modal.Content>
+                    </Modal>
+
                 </ScrollView>
             </View>
 
@@ -1553,7 +1707,39 @@ const styles = StyleSheet.create({
         paddingVertical: rMS(10),
         paddingHorizontal: rMS(5),
         borderRadius: 6
-    }
+    },
+    productInfoWrapper: {
+        // height: hp("55%"),
+        width: "93%",
+        borderTopLeftRadius: rMS(20),
+        borderTopRightRadius: rMS(20),
+        marginTop: "-5%",
+        paddingTop: rMS(30),
+        paddingBottom: rMS(10),
+        paddingHorizontal: rMS(10),
+        backgroundColor: "#EDEDED"
+    },
+    ratingLbl: {
+        fontFamily: "Inter-Regular",
+        fontSize: rMS(16),
+        fontWeight: "700",
+        color: "rgb(86, 101, 115)"
+    },
+    descriptionLbl: {
+        fontFamily: "Inter-Regular",
+        fontSize: rMS(16),
+        color: "#6B7280"
+    },
+    lbl: {
+        fontFamily: "Inter-Regular",
+        fontSize: rMS(15),
+        color: "#000000"
+    },
+    vallbl: {
+        fontFamily: "Inter-Regular",
+        fontSize: rMS(15),
+        color: "#6B7280"
+    },
 });
 
 export default Cart;

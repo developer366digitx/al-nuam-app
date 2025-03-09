@@ -26,7 +26,7 @@ import CustomerSupport from "../Support/CustomerSupport";
 import ChatSupport from "../Support/ChatSupport";
 import Tooltip from 'react-native-walkthrough-tooltip';
 import { CopilotProvider } from "react-native-copilot";
-import { Alert, BackHandler } from "react-native";
+import { Alert, BackHandler, Platform } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 const Dashboard = ({ navigation }) => {
 
@@ -64,7 +64,14 @@ const Dashboard = ({ navigation }) => {
     return (
         
         // <NavigationContainer>
-        <Tab.Navigator screenOptions={{ unmountOnBlur: true, headerShown: false }} tabBarOptions={{
+        <Tab.Navigator screenOptions={{ unmountOnBlur: true, headerShown: false,   tabBarStyle: {
+            backgroundColor: '#fff',
+            paddingBottom: Platform.OS === 'ios' ? 20 : 10,
+            height: Platform.OS === 'ios' ? 80 : 60,
+          },
+          tabBarItemStyle: { paddingVertical: 5 },
+          tabBarLabelStyle: { fontSize: 12, fontFamily: "Inter-Regular" },
+          animationEnabled: true, }} tabBarOptions={{
             tabStyle: {
                 paddingTop: 10,
                 backgroundColor: '#fff',

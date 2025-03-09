@@ -636,6 +636,7 @@ const BulkOrder = () => {
         // })
 
         // Add to  Cart
+        setIsLoading(true)
         try {
             const prod_list = [];
             modifiedProductList.map(ele => {
@@ -860,7 +861,7 @@ const BulkOrder = () => {
         setProductInfoLoading(true);
         const URL = `${GET_PRODUCT_BY_PRODUCT_ID}/${productId}`;
         const data = await HTTP_GET(URL);
-
+        console.log(data,'bulk order'); 
         if (data != null && data["status"] !== undefined) {
             if (data["status"] === "invalid") {
                 toast.show({ description: "Oops! Something went wrong while fetching your details." });
@@ -1566,7 +1567,7 @@ const BulkOrder = () => {
             }
 
             {
-                isLoading && productList.length == 0 &&
+                isLoading && !productList.length &&
                 <View style={styles.overlay}>
                     <HStack space={2} alignItems="center">
                         <Spinner color="#B6974E" size={"lg"} accessibilityLabel="Loading posts" />
